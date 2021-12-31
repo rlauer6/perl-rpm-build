@@ -1,0 +1,72 @@
+%define project_base     @PACKAGE@
+%define project_version  @VERSION@
+%define perl_module      @MODULE@
+%define pkgname          %{project_base}-%{project_version}
+%define buildroot        %{_tmppath}/%{pkgname}-%(%{__id_u} -n)
+
+Name:       %{project_base}
+Version:    %(echo %{project_version} | awk -F- '{print $1}')
+Release:    %(echo %{project_version} | awk -F- '{if (length($2) == 0) {print "0" } else { print $2 } }')
+License:    Artistic License
+Vendor:     None
+Source:     %{project_base}-%{project_version}.tar.gz
+
+BuildArch:  noarch
+
+%define _prefix         /usr
+%define _sysconfdir     %{_prefix}/etc
+%define _datadir        %{_prefix}/share
+%define _localstatedir  %{_prefix}/var
+%define _mandir         %{_prefix}/man
+%define _infodir        %{_prefix}/info
+%define _libdir         %{_prefix}/lib
+%define _bindir         %{_prefix}/bin
+%define _libexecdir     %{_prefix}/libexec
+%define _sbindir        %{_prefix}/sbin
+%define _includedir     %{_prefix}/include
+%define _perl5libdir    %(perl -MConfig -wle 'print $Config{sitelib};')
+
+BuildRoot:  %{buildroot}
+Prefix:     %{_prefix}
+
+### END OF BOILERPLATE HEADER ###
+
+BuildRequires: perl(App::cpanminus)
+
+#--------------------------------------------------------------------#
+
+Summary:  %{project_base}
+Group:    Development/Libraries
+
+%description
+
+%{perl_module} %{project_version} built by cpanm
+
+%prep
+%setup -q -n %{pkgname}
+
+%build
+
+cpanm --installdeps -v -n -L %{buildroot}/deps %{perl_module}@%{project_version}
+
+HOME=%{buildroot} \
+MODULE='' PERL5LIB=%{buildroot}/deps/lib/perl5 cpanm \
+  -n -v --no-man-pages --reinstall \
+  -l %{buildroot} \
+  %{perl_module}@%{project_version}
+
+rm -rf %{buildroot}/deps
+rm -f %{buildroot}/lib/perl5/x86_64-linux-thread-multi/perllocal.pod || true
+
+mkdir -p %{buildroot}/usr/local/share
+mv %{buildroot}/lib/perl5 %{buildroot}/usr/local/share/perl5
+
+rm -rf %{buildroot}/.cpanm
+
+tree %{buildroot}
+
+%files
+%defattr(-,root,root)
+
+%{_perl5libdir}/*
+
